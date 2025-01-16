@@ -14,6 +14,9 @@
 11. [Cleanup](#cleanup)
 12. [Best Practices](#best-practices)
 13. [Detailed Deployment Process Log](#detailed-deployment-process-log)
+14. [Kubernetes Namespace](#kubernetes-namespace)
+15. [Deployment Status](#deployment-status)
+16. [Deployment Instructions](#deployment-instructions)
 
 ## Introduction
 
@@ -500,15 +503,15 @@ This section documents the exact steps we followed to deploy our application to 
 1. **Build and Push Frontend Image**
    ```bash
    cd frontend
-   docker build -t gcr.io/gcp-demo-app-2024/frontend:latest .
-   docker push gcr.io/gcp-demo-app-2024/frontend:latest
+   docker build -t gcr.io/gcp-demo-app-2024/react-frontend .
+   docker push gcr.io/gcp-demo-app-2024/react-frontend
    ```
 
 2. **Build and Push Backend Image**
    ```bash
    cd backend
-   docker build -t gcr.io/gcp-demo-app-2024/backend:latest .
-   docker push gcr.io/gcp-demo-app-2024/backend:latest
+   docker build -t gcr.io/gcp-demo-app-2024/spring-backend .
+   docker push gcr.io/gcp-demo-app-2024/spring-backend
    ```
 
 ### 4. GKE Cluster Setup
@@ -553,8 +556,8 @@ This section documents the exact steps we followed to deploy our application to 
    COPY nginx.conf /etc/nginx/conf.d/default.conf
    
    # Rebuild and redeploy frontend
-   docker build -t gcr.io/gcp-demo-app-2024/frontend:latest .
-   docker push gcr.io/gcp-demo-app-2024/frontend:latest
+   docker build -t gcr.io/gcp-demo-app-2024/react-frontend .
+   docker push gcr.io/gcp-demo-app-2024/react-frontend
    kubectl rollout restart deployment/frontend
    ```
 
@@ -617,6 +620,156 @@ This section documents the exact steps we followed to deploy our application to 
    - Use multi-stage Docker builds
    - Implement proper caching strategies
    - Configure appropriate replica counts
+
+## Kubernetes Namespace
+
+The application runs in its own namespace called `react-spring-app`. This namespace isolates the application resources from other applications in the cluster.
+
+To create the namespace and deploy the application:
+
+```bash
+# Create namespace
+kubectl apply -f k8s/namespace.yaml
+
+# Deploy the applications
+kubectl apply -f k8s/
+```
+
+To view resources in the namespace:
+```bash
+# View all resources in the namespace
+kubectl get all -n react-spring-app
+
+# View pods
+kubectl get pods -n react-spring-app
+
+# View services
+kubectl get services -n react-spring-app
+```
+
+## Deployment Status
+
+The application is currently deployed on Google Kubernetes Engine (GKE) in the `react-spring-app` namespace. Here are the key components:
+
+### Frontend Service
+- **Type**: LoadBalancer
+- **External IP**: 34.58.146.62
+- **Port**: 80
+- **Access URL**: http://34.58.146.62
+
+### Backend Service
+- **Type**: ClusterIP
+- **Internal IP**: 34.118.236.19
+- **Port**: 8080
+- **Access**: Internal cluster access only
+
+### Container Images
+- Frontend: `gcr.io/gcp-demo-app-2024/react-frontend:latest`
+- Backend: `gcr.io/gcp-demo-app-2024/spring-backend:latest`
+
+## Deployment Instructions
+
+### Prerequisites
+1. Google Cloud SDK installed and configured
+2. Docker installed and running
+3. kubectl configured to work with your GKE cluster
+
+### Building and Pushing Docker Images
+
+1. Build and push the backend image:
+```bash
+# Navigate to backend directory
+cd backend
+
+# Build the image
+docker build -t gcr.io/gcp-demo-app-2024/spring-backend .
+
+# Push to Google Container Registry
+docker push gcr.io/gcp-demo-app-2024/spring-backend
+```
+
+2. Build and push the frontend image:
+```bash
+# Navigate to frontend directory
+cd frontend
+
+# Build the image
+docker build -t gcr.io/gcp-demo-app-2024/react-frontend .
+
+# Push to Google Container Registry
+docker push gcr.io/gcp-demo-app-2024/react-frontend
+```
+
+### Deploying to GKE
+
+1. Create the namespace:
+```bash
+kubectl apply -f k8s/namespace.yaml
+```
+
+2. Deploy all resources:
+```bash
+kubectl apply -f k8s/
+```
+
+3. Verify the deployment:
+```bash
+# Check all resources in the namespace
+kubectl get all -n react-spring-app
+
+# Check the frontend service for the external IP
+kubectl get service frontend-service -n react-spring-app
+```
+
+### Monitoring and Troubleshooting
+
+1. View pod logs:
+```bash
+# For backend pods
+kubectl logs -f deployment/backend -n react-spring-app
+
+# For frontend pods
+kubectl logs -f deployment/frontend -n react-spring-app
+```
+
+2. Check pod status:
+```bash
+kubectl get pods -n react-spring-app
+```
+
+3. Describe resources for detailed information:
+```bash
+# Describe a specific pod
+kubectl describe pod <pod-name> -n react-spring-app
+
+# Describe services
+kubectl describe service frontend-service -n react-spring-app
+kubectl describe service backend-service -n react-spring-app
+```
+
+## Scaling
+
+To scale the deployments:
+
+```bash
+# Scale frontend
+kubectl scale deployment frontend --replicas=3 -n react-spring-app
+
+# Scale backend
+kubectl scale deployment backend --replicas=3 -n react-spring-app
+```
+
+## Cleanup
+
+To remove the deployment:
+
+```bash
+# Delete all resources in the namespace
+kubectl delete -f k8s/
+
+# Delete the namespace
+kubectl delete namespace react-spring-app
+```
 
 ## Additional Resources
 
